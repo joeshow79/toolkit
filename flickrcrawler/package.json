@@ -1,0 +1,25 @@
+{
+  "name": "flickr",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.17.1",
+    "bluebird": "^3.5.1",
+    "file-type": "^7.3.0",
+    "flickr-sdk": "^3.5.0",
+    "mkdirp": "^0.5.1",
+    "node-schedule": "^1.2.5",
+    "pkg": "^4.3.0-beta.1",
+    "write-file": "^1.0.0"
+  },
+  "bin": "index.js",
+  "devDependencies": {
+    "babel-cli": "^6.26.0"
+  }
+}
