@@ -1,0 +1,313 @@
+/*
+ *
+ * Author:jason jiao
+ *
+ * History:
+ * 2018-01-31: initial version
+ * 
+ * Reference:
+ *
+ *
+*/
+
+#include <iostream>  
+#include <random>
+#include <iomanip>
+#include <fstream>
+#include <algorithm>
+#include <opencv2/core/core.hpp>  
+#include <opencv2/highgui/highgui.hpp>  
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <vector>
+#include <libgen.h>
+#include <dirent.h>  
+#include <sys/stat.h>  
+#include <unistd.h>  
+#include <stdio.h>
+
+using namespace std;  
+using namespace cv;
+
+
+static int BUF_LENGTH=1024;
+static float coef=0.1;
+static int offset=10;
+int nRepeatTimes=1;
+float dRatio=1.0;
+
+int usage(int argc){
+	cout<<"usage: paircomp fileList -k [Repeat Times] -r [Random Ratio]\n"<<endl;
+	cout<<"-k: Repeat times. Must be integer and greater than 0"<<endl;
+	cout<<"-r: Random ratio. Must be the value between [0.0,1.0]"<<endl;
+	cout<<endl;
+	if ( argc != 2 )
+	{
+		return -1;
+	}
+	return 0;
+}
+
+void mergeImg(Mat & dst,Mat &src1,Mat &src2)  
+{  
+	//int rows = src1.rows+5+src2.rows;  
+	int rows = max(src1.rows,src2.rows);  
+	int cols = src1.cols+5+src2.cols;  
+	CV_Assert(src1.type () == src2.type ());  
+	dst.create (rows,cols,src1.type ());  
+	src1.copyTo (dst(Rect(0,0,src1.cols,src1.rows)));  
+	src2.copyTo (dst(Rect(src1.cols+5,0,src2.cols,src2.rows)));  
+} 
+
+int main(int argc, char** argv)
+{
+	char ch;
+	while((ch = getopt(argc, argv, "hk:r:")) != -1){  
+  
+        switch(ch){  
+            case 'h':  
+				usage(argc);
+                break;  
+			case 'k':
+				nRepeatTimes=atoi(optarg);
+				if(nRepeatTimes<=0){
+					cerr<<"FATAL: Illegal value for repeat times!"<<endl;
+				}
+				break;
+			case 'r':
+				dRatio=atof(optarg);
+				if(dRatio<=0.0 || dRatio>1.0){
+					cerr<<"FATAL: Illegal ratio value!"<<endl;
+					return -1;
+				}
+				break;
+            default:  
+                cout<<"invalid  option: "<< ch<<endl;;  
+                break;  
+        }  
+    }  
+
+	int result=usage(argc);
+	if(result!=0){
+		return result;
+	}
+
+	char* file_name=argv[1];
+    if( NULL == file_name )  
+    {  
+        cout<< "<list file> is not specified! "<<endl;  
+        return -1;  
+    }  
+  
+      
+	//Result file
+	ofstream resultList("result.txt");
+    /* Iterator through the files list */  
+	for(int i=0;i<nRepeatTImes;++i){
+		ifstream fileList(argv[1]);
+
+		if(!fileList){
+		cerr<<"Unable to read list file, exit!"<<endl;
+		return -1;
+	}
+
+	string strImgOne="./1.png";
+	string strImgTwo="./2.png";
+	string strImgQuestion="./qm.png";
+	cv::Mat matOne=cv::imread(strImgOne.c_str());
+	cv::Mat matTwo=cv::imread(strImgTwo.c_str());
+	cv::Mat matQuestion=cv::imread(strImgQuestion.c_str());
+
+	char buf[BUF_LENGTH];
+	char bufA[BUF_LENGTH];
+	char bufB[BUF_LENGTH];
+	char category[BUF_LENGTH];
+
+	string compA,compB;
+
+	while(!fileList.eof()){
+		//Ratio Check
+		default_random_engine e;
+		uniform_real_distribution<double> u(0.0,1.0);
+		if(u(e)>dRatio)
+		{
+			continue;
+		}
+
+		fileList.getline(buf,1024);
+
+		sscanf(buf,"%s %s %s",category,bufA,bufB);
+		//cout<<bufA<<endl;
+		//cout<<bufB<<endl;
+		string strCompA=string(bufA);
+		string strCompB=string(bufB);
+		string strCat=string(category);
+		cout<<strCompA<<endl;
+		cout<<strCompB<<endl;
+
+		cv::Mat matA=cv::imread(strCompA.c_str());
+		cv::Mat matB=cv::imread(strCompB.c_str());
+
+		cv::Mat bgrd;
+		cv::Mat matAProcessed;
+		cv::Mat matBProcessed;
+
+		cvNamedWindow(category);
+
+		int nSelection=0;
+		float scale=1.0;
+		int xOffset=0;
+		int yOffset=0;
+
+		while(1){
+			cout<<"Scale: "<<scale<<endl;
+			//Resize
+			resize(matA,matAProcessed,Size(0,0),scale,scale,INTER_LINEAR);
+			resize(matB,matBProcessed,Size(0,0),scale,scale,INTER_LINEAR);
+			if(scale>1.0){
+				int nDiffAX=matAProcessed.cols-matA.cols;
+				int nDiffAY=matAProcessed.rows-matA.rows;
+				int nNewAX=nDiffAX/2;
+				int nNewAY=nDiffAY/2;
+
+				if(nNewAX+matA.cols+xOffset>=matAProcessed.cols){
+					nNewAX=matAProcessed.cols-matA.cols;
+				}
+				if(nNewAX+xOffset<=0){
+					nNewAX=0;
+				}
+				if(nNewAY+matA.rows+yOffset>=matAProcessed.rows){
+					nNewAY=matAProcessed.rows-matA.rows;
+				}
+				if(nNewAY+yOffset<=0){
+					nNewAY=0;
+				}
+
+				int nDiffBX=matBProcessed.cols-matB.cols;
+				int nDiffBY=matBProcessed.rows-matB.rows;
+				int nNewBX=nDiffBX/2;
+				int nNewBY=nDiffBY/2;
+
+				if(nNewBX+matB.cols+xOffset>=matBProcessed.cols){
+					nNewBX=matBProcessed.cols-matB.cols;
+				}
+				if(nNewBX+xOffset<=0){
+					nNewBX=0;
+				}
+				if(nNewBY+matB.rows+yOffset>=matBProcessed.rows){
+					nNewBY=matBProcessed.rows-matB.rows;
+				}
+				if(nNewBY+yOffset<=0){
+					nNewBY=0;
+				}
+				/*Rect rectRoiA(matAProcessed.cols/2-matA.cols/2,matAProcessed.rows/2-matA.rows/2,matA.cols,matA.rows);
+				matAProcessed=matAProcessed(rectRoiA);
+				Rect rectRoiB(matBProcessed.cols/2-matB.cols/2,matBProcessed.rows/2-matB.rows/2,matB.cols,matB.rows/2);
+				matBProcessed=matBProcessed(rectRoiB);*/
+				Rect rectRoiA(nNewAX,nNewAY,matA.cols,matA.rows);
+				matAProcessed=matAProcessed(rectRoiA);
+				Rect rectRoiB(nNewBX,nNewBY,matB.cols,matB.rows);
+				matBProcessed=matBProcessed(rectRoiB);
+				resize(matAProcessed,matAProcessed,Size(matA.cols,matA.rows),0,0,INTER_LINEAR);
+				resize(matBProcessed,matBProcessed,Size(matB.cols,matB.rows),0,0,INTER_LINEAR);
+			}
+
+			cout<<matA.cols<<" "<<matA.rows<<endl;
+			cout<<matB.cols<<" "<<matB.rows<<endl;
+			cout<<matAProcessed.cols<<" "<<matAProcessed.rows<<endl;
+			cout<<matBProcessed.cols<<" "<<matBProcessed.rows<<endl;
+
+			//mergeImg(bgrd,matA,matB);
+			mergeImg(bgrd,matAProcessed,matBProcessed);
+			
+			cv::imshow("PairwiseComparison",bgrd);
+			cv::moveWindow("PairwiseComparison",512,0);
+
+			switch(nSelection){
+				case 1:
+					cv::imshow("Answer",matOne);
+					break;
+				case 2:
+					cv::imshow("Answer",matTwo);
+					break;
+				default:
+					cv::imshow("Answer",matQuestion);
+					break;
+			}
+
+			int input_key=cvWaitKey();
+			cout<<input_key<<endl;
+
+			bool bEnter=false;
+
+			switch(input_key){
+			case 49: //1
+				nSelection=1;
+				cout<<"1st picture selected as better."<<endl;
+				break;
+			case 50:  //2
+				nSelection=2;
+				cout<<"2nd picture selected as better."<<endl;
+				break;
+			case 61: //+
+				if(scale<2){
+					scale+=coef;
+				}
+				break;
+			case 45: //+
+				if(scale>0.4){
+					scale-=coef;
+				}
+				break;
+			case 63232: //Up
+				yOffset+=offset;
+				break;
+			case 63233: //Down
+				yOffset-=offset;
+				break;
+			case 63234: //Left
+				xOffset-=offset;
+				break;
+			case 63235: //Right
+				xOffset+=offset;
+				break;
+			case 114:   //R key
+				scale=1;
+				xOffset=0;
+				yOffset=0;
+				break;
+			case 13: //Enter
+				cout<<"Iterate to next one."<<endl;
+				bEnter=true;
+				break;
+			case 27: //ESC
+				cout<<"Cancel the work."<<endl;
+				return 0;
+			default:
+				nSelection=0;
+				cerr<<"Invalid selection."<<endl;
+				break;
+			}
+
+			if(bEnter){
+				cout<<"Your selection is: "<<nSelection<<endl;
+				if(nSelection == 1 || nSelection == 2){
+					resultList<<strCompA<<" "<<strCompB<<" "<<nSelection<<endl;
+					nSelection=0;
+					scale=1;
+					xOffset=0;
+					yOffset=0;
+					break;
+				}
+				else{
+					cerr<<"Pleaes slelect 1 or 2 for the better one before iterate to next comparison."<<endl;
+				}
+			}
+		}
+		cvDestroyWindow(category);
+	}
+	}
+
+    return (int)0;
+}
+

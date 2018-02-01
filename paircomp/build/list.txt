@@ -1,0 +1,12 @@
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_A.jpg /Users/jasonjmac/Downloads/打分数据/S01_B.jpg
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_A.jpg /Users/jasonjmac/Downloads/打分数据/S01_C.jpg
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_A.jpg /Users/jasonjmac/Downloads/打分数据/S01_D.jpg
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_B.jpg /Users/jasonjmac/Downloads/打分数据/S01_C.jpg
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_B.jpg /Users/jasonjmac/Downloads/打分数据/S01_D.jpg
+OutFocus /Users/jasonjmac/Downloads/打分数据/S01_C.jpg /Users/jasonjmac/Downloads/打分数据/S01_D.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_A.jpg /Users/jasonjmac/Downloads/打分数据/S12_B.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_A.jpg /Users/jasonjmac/Downloads/打分数据/S12_C.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_A.jpg /Users/jasonjmac/Downloads/打分数据/S12_D.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_B.jpg /Users/jasonjmac/Downloads/打分数据/S12_C.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_B.jpg /Users/jasonjmac/Downloads/打分数据/S12_D.jpg
+Border /Users/jasonjmac/Downloads/打分数据/S12_C.jpg /Users/jasonjmac/Downloads/打分数据/S12_D.jpg
