@@ -83,6 +83,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		case 'h':
 			usage(argc);
+			return 0;
 			break;
 		case 'f':
 			strFileName=string(optarg);
@@ -148,8 +149,8 @@ main(int argc, char **argv)
 	}
 	/* Iterator through the files list */
 	for (int iter = 0; iter < nRepeatTimes; ++iter) {
-		cout<<"-------------------------------"<<endl;
 		cout<<"Iteration #"<<iter<<endl;
+		cout<<"-------------------------------"<<endl;
 
 		ifstream	fileList(strFileName);
 
@@ -158,14 +159,8 @@ main(int argc, char **argv)
 		char		category  [BUF_LENGTH];
 
 		vector<string>::iterator it;
-		cout<<"-------------------------------"<<endl;
-		for(it=vecList.begin();it!=vecList.end();it++){
-			cout<<(*it)<<endl;
-		}
-		cout<<"-------------------------------"<<endl;
 		for(it=vecList.begin();it!=vecList.end();it++){
 			string strValue=(*it);
-//		while ( fileList.getline(buf, BUF_LENGTH )){
 
 			//Ratio Check
 			default_random_engine e(time(0));
@@ -205,19 +200,14 @@ main(int argc, char **argv)
 			int nMaxOffsetStepX=0;
 			int nMaxOffsetStepY=0;
 
-			cout<<"1"<<endl;
-			cout<<"scale:"<<fScale4Display<<endl;
+			//cout<<"scale:"<<fScale4Display<<endl;
 			resize(matAOrig, matA, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
 			resize(matBOrig, matB, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
-			cout<<"2"<<endl;
 
 			while (1) {
-				cout << "Scale: " << fScale << endl;
+				/*cout << "Scale: " << fScale << endl;
 				cout << "xOffset: "<< xOffset <<endl;
-				cout << "yOffset: "<< yOffset <<endl;
-				//Resize
-				//resize(matA, matAProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
-				//resize(matB, matBProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
+				cout << "yOffset: "<< yOffset <<endl;*/
 
 				resize(matAOrig, matAProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
 				resize(matBOrig, matBProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
@@ -226,14 +216,14 @@ main(int argc, char **argv)
 					nMaxOffsetStepX=max(abs(matAProcessed.cols - matA.cols)/nOffset,abs(matBProcessed.cols-matB.cols)/nOffset)/2;
 					nMaxOffsetStepY=max(abs(matAProcessed.rows - matA.rows)/nOffset,abs(matBProcessed.rows-matB.rows)/nOffset)/2;
 
+					/*				
 					cout << "Original imageA size: ("<<matA.cols << "," << matA.rows <<")"<< endl;
 					cout << "Original imageB size: ("<<matB.cols << "," << matB.rows <<")"<< endl;
 					cout << "Zoomed imageA size: ("<<matAProcessed.cols << "," << matAProcessed.rows <<")"<< endl;
 					cout << "Zoomed imageB size: ("<<matBProcessed.cols << "," << matBProcessed.rows <<")"<< endl;
 					cout << "Max X/Y offset step: "<<nMaxOffsetStepX<<"/"<<nMaxOffsetStepY<<endl;
+					*/
 
-					//int nPlanOffsetX= xOffset * nOffset * fScale;
-					//int nPlanOffsetY= yOffset * nOffset * fScale;
 					int nPlanOffsetX= xOffset * nOffset ;
 					int nPlanOffsetY= yOffset * nOffset ;
 
@@ -352,7 +342,7 @@ main(int argc, char **argv)
 						fScale -= fCoef;
 					}
 					break;
-				case 63232: //Up
+				case 63232: //Up   #TODO:Check the key on different platform
 					if(yOffset < nMaxOffsetStepY && yOffset >= (-nMaxOffsetStepY)){
 						yOffset += 1;
 					}
