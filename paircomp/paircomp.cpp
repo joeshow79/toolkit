@@ -66,6 +66,19 @@ usage(int argc)
 	return 0;
 }
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
+int
+getPid(){
+{
+    int nPid = (int)getpid();
+    return nPid;
+}
+}
 void 
 mergeImg(Mat & dst, Mat & src1, Mat & src2)
 {
@@ -178,7 +191,7 @@ main(int argc, char **argv)
 	cv:: Mat matQuestion = cv::imread(strImgQuestion.c_str());
 
 	//Result file
-	ofstream resultList("result.txt");
+	ofstream resultList("result"+to_string(getPid())+".txt");
 
 	ifstream	fileList(strFileName);
 
@@ -244,8 +257,10 @@ main(int argc, char **argv)
 			cvSetMouseCallback(strWindowName.c_str(), mouseCallback, NULL);
 
 			int		nSelection = 0;
-			double   fScale4Display = std::min(1.0,((double)nGoodWidth/matAOrig.cols));
-			double   fScale = fScale4Display;
+			double   fScale4DisplayA = std::min(1.0,((double)nGoodWidth/matAOrig.cols));
+			double   fScale4DisplayB = std::min(1.0,((double)nGoodWidth/matBOrig.cols));
+			double   fScaleA = fScale4DisplayA;
+			double   fScaleB = fScale4DisplayB;
 			int		xOffset = 0;
 			int		yOffset = 0;
 			int nMaxOffsetStepX=0;
@@ -253,18 +268,20 @@ main(int argc, char **argv)
 
 			//cout<<"scale:"<<fScale4Display<<endl;
 
-			resize(matAOrig, matA, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
-			resize(matBOrig, matB, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
+			resize(matAOrig, matA, Size(0, 0), fScale4DisplayA, fScale4DisplayA, INTER_LINEAR);
+			resize(matBOrig, matB, Size(0, 0), fScale4DisplayB, fScale4DisplayB, INTER_LINEAR);
 
 			while (1) {
-				cout << "Scale: " << fScale << endl;
+				cout << "ScaleA: " << fScaleA << endl;
+				cout << "ScaleB: " << fScaleB << endl;
 				cout << "xOffset: "<< xOffset <<endl;
 				cout << "yOffset: "<< yOffset <<endl;
 
-				resize(matAOrig, matAProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
-				resize(matBOrig, matBProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
+				resize(matAOrig, matAProcessed, Size(0, 0), fScaleA, fScaleA, INTER_LINEAR);
+				resize(matBOrig, matBProcessed, Size(0, 0), fScaleB, fScaleB, INTER_LINEAR);
 				//if (fScale > 1.0) {
-				if (fScale > fScale4Display) {
+				if ((fScaleA > fScale4DisplayA) && (fScaleB > fScale4DisplayB))
+				{
 					nMaxOffsetStepX=max(abs(matAProcessed.cols - matA.cols)/nOffset,abs(matBProcessed.cols-matB.cols)/nOffset)/2;
 					nMaxOffsetStepY=max(abs(matAProcessed.rows - matA.rows)/nOffset,abs(matBProcessed.rows-matB.rows)/nOffset)/2;
 
@@ -370,7 +387,7 @@ main(int argc, char **argv)
 				putText(matIndicator,strCat,ptOrg,FONT_HERSHEY_COMPLEX,3,Scalar(0,255,0));
 				cv::imshow(strIndicator, matIndicator);
 
-				int		input_key = cvWaitKey(100);
+				int		input_key = cvWaitKey(20);
 				cout <<"Input key: "<< input_key << endl;
 
 				bool		bEnter = false;
@@ -385,13 +402,15 @@ main(int argc, char **argv)
 					cout << "2nd picture selected as better." << endl;
 					break;
 				case 61: //+
-					if (fScale < 2) {
-						fScale += fCoef;
+					if ((fScaleA < 2) && (fScaleB < 2)) {
+						fScaleA += fCoef;
+						fScaleB += fCoef;
 					}
 					break;
 				case 45: //-
-					if (fScale > 0.2) {
-						fScale -= fCoef;
+					if ((fScaleA > 0.2) && (fScaleB > 0.2)) {
+						fScaleA -= fCoef;
+						fScaleB -= fCoef;
 					}
 					break;
 				case 63232: //Up   #TODO:Check the key on different platform
@@ -415,7 +434,8 @@ main(int argc, char **argv)
 					}
 					break;
 				case 114: //R key
-					fScale = fScale4Display ;
+					fScaleA = fScale4DisplayA ;
+					fScaleB = fScale4DisplayB ;
 					xOffset = 0;
 					yOffset = 0;
 					break;
@@ -435,13 +455,16 @@ main(int argc, char **argv)
 				}
 
 				//Check the mouse event
+				//TODO:somethine wrong with the following snippet
 				if((false == bLeftButtonDown ) ){
 					if(true == bDragLeft){
+						cout<<"DragLeft.................."<<endl;
 						if(xOffset <= nMaxOffsetStepX && xOffset > (-nMaxOffsetStepX)){
 							xOffset -= 1;
 						}
 					}
 					if(true == bDragRight){
+						cout<<"DragRight.................."<<endl;
 						if(xOffset < nMaxOffsetStepX && xOffset >= (-nMaxOffsetStepX)){
 							xOffset += 1;
 						}
@@ -467,7 +490,8 @@ main(int argc, char **argv)
 					if (nSelection == 1 || nSelection == 2) {
 						resultList << strCat << " "<< strCompA << " " << strCompB << " " << nSelection << endl;
 						nSelection = 0;
-						fScale = fScale4Display ;
+						fScaleA = fScale4DisplayA ;
+						fScaleB = fScale4DisplayB ;
 						xOffset = 0;
 						yOffset = 0;
 						break;
