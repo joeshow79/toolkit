@@ -38,6 +38,12 @@ static int	nOffset = 100;
 int		nRepeatTimes = 1;
 float		dRatio = 1.0;
 static int nGoodWidth=600;
+bool bLeftButtonDown;
+bool bRightButtonDown;
+bool bDragLeft;
+bool bDragRight;
+bool bDragUp;
+bool bDragDown;
 
 //Resource
 string		strImgOne = "./1.png";
@@ -70,6 +76,49 @@ mergeImg(Mat & dst, Mat & src1, Mat & src2)
 	dst.create(rows, cols, src1.type());
 	src1.copyTo(dst(Rect(0, 0, src1.cols, src1.rows)));
 	src2.copyTo(dst(Rect(src1.cols + 5, 0, src2.cols, src2.rows)));
+}
+
+void mouseCallback(int event, int x, int y, int flags, void* param){
+
+	//cout<<"Mouse event: "<<event<<",flags"<<flags<<endl;
+	static int nLastPointX=0;
+	static int nLastPointY=0;
+
+    switch(event)
+    {
+        case CV_EVENT_LBUTTONDOWN: 
+			bLeftButtonDown=true;
+			break;
+        case CV_EVENT_LBUTTONUP: 
+			bLeftButtonDown=false;
+			break;
+        case CV_EVENT_MOUSEMOVE: 
+			//if(((flags & CV_EVENT_FLAG_LBUTTON) == CV_EVENT_FLAG_LBUTTON)) {
+			if(true == bLeftButtonDown){
+				if(abs(x - nLastPointX) > abs( y - nLastPointY)){ //x axis
+					if(( x - nLastPointX) < 0 ){
+						bDragRight=true;
+					}
+					if(( x - nLastPointX) > 0 ){
+						bDragLeft=true;
+					}
+				}
+				if(abs(x - nLastPointX) < abs( y - nLastPointY)){ //y axis
+					if(( y - nLastPointY) < 0 ){
+						bDragUp=true;
+					}
+					if(( y - nLastPointY) > 0 ){
+						bDragDown=true;
+					}
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
+	nLastPointX=x;
+	nLastPointY=y;
 }
 
 int 
@@ -190,7 +239,9 @@ main(int argc, char **argv)
 			cv::		Mat matAProcessed;
 			cv::		Mat matBProcessed;
 
-			cvNamedWindow(category);
+			//cvNamedWindow(category);
+			cvNamedWindow(strWindowName.c_str());
+			cvSetMouseCallback(strWindowName.c_str(), mouseCallback, NULL);
 
 			int		nSelection = 0;
 			double   fScale4Display = std::min(1.0,((double)nGoodWidth/matAOrig.cols));
@@ -201,13 +252,14 @@ main(int argc, char **argv)
 			int nMaxOffsetStepY=0;
 
 			//cout<<"scale:"<<fScale4Display<<endl;
+
 			resize(matAOrig, matA, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
 			resize(matBOrig, matB, Size(0, 0), fScale4Display, fScale4Display, INTER_LINEAR);
 
 			while (1) {
-				/*cout << "Scale: " << fScale << endl;
+				cout << "Scale: " << fScale << endl;
 				cout << "xOffset: "<< xOffset <<endl;
-				cout << "yOffset: "<< yOffset <<endl;*/
+				cout << "yOffset: "<< yOffset <<endl;
 
 				resize(matAOrig, matAProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
 				resize(matBOrig, matBProcessed, Size(0, 0), fScale, fScale, INTER_LINEAR);
@@ -318,7 +370,7 @@ main(int argc, char **argv)
 				putText(matIndicator,strCat,ptOrg,FONT_HERSHEY_COMPLEX,3,Scalar(0,255,0));
 				cv::imshow(strIndicator, matIndicator);
 
-				int		input_key = cvWaitKey();
+				int		input_key = cvWaitKey(100);
 				cout <<"Input key: "<< input_key << endl;
 
 				bool		bEnter = false;
@@ -374,10 +426,40 @@ main(int argc, char **argv)
 				case 27: //ESC
 					cout << "Cancel the work." << endl;
 					return 0;
+				case -1: //timeout
+					break;
 				default:
 					nSelection = 0;
 					cerr << "Invalid selection." << endl;
 					break;
+				}
+
+				//Check the mouse event
+				if((false == bLeftButtonDown ) ){
+					if(true == bDragLeft){
+						if(xOffset <= nMaxOffsetStepX && xOffset > (-nMaxOffsetStepX)){
+							xOffset -= 1;
+						}
+					}
+					if(true == bDragRight){
+						if(xOffset < nMaxOffsetStepX && xOffset >= (-nMaxOffsetStepX)){
+							xOffset += 1;
+						}
+					}
+					if(true == bDragUp){
+						if(yOffset < nMaxOffsetStepY && yOffset >= (-nMaxOffsetStepY)){
+							yOffset += 1;
+						}
+					}
+					if(true == bDragDown){
+						if(yOffset <= nMaxOffsetStepY && yOffset > (-nMaxOffsetStepY)){
+							yOffset -= 1;
+						}
+					}
+					bDragLeft=false;
+					bDragRight=false;
+					bDragUp=false;
+					bDragDown=false;
 				}
 
 				if (bEnter) {
