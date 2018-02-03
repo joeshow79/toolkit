@@ -1,8 +1,8 @@
 [USAGE]
-usage: paircomp -f fileList -k [Repeat Times] -r [Random Ratio]
+usage: paircomp -f fileList -t [Repeat Times] -r [Random Ratio]
 
 -f: List file.
--k: Repeat times. Must be integer and greater than 0
+-t: Repeat times. Must be integer and greater than 0
 -r: Random ratio. Must be the value between (0.0,1.0]
 
 [KEYS]
