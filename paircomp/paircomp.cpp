@@ -27,14 +27,14 @@ using namespace	cv;
 static int	BUF_LENGTH = 1024;
 
 //Parameters
-static float	fCoef = 0.1;
-static int	nOffsetStride = 200;
+static const double MAXSCALE=2.0;
+static const double MINSCALE=0.2;
+static const int	OFFSETSTRIDE = 200;
+
+static double dCoef = 0.1;
 int		nRepeatTimes = 1;
-float		dRatio = 1.0;
+double		dRatio = 1.0;
 static int nGoodWidth=600;
-static float MAXSCALE=2.0;
-static float MINSCALE=0.2;
-static int DRAGSTEPSCALE=100;
 
 bool bLeftButtonDown;
 bool bRightButtonDown;
@@ -42,14 +42,20 @@ bool bDragLeft;
 bool bDragRight;
 bool bDragUp;
 bool bDragDown;
-int nDragScale;
+double dDragScale;
+int nMouseWheelScale;
+
 
 //Resource
 string		strImgOne = "./1.png";
 string		strImgTwo = "./2.png";
-string		strImgQuestion = "./qm.png";
+string		strImgQuestion = "./qm2.png";
+string		strImgError = "./error.png";
 string strWindowName="PairwiseComparison";
 string strIndicator="Indicator";
+
+//Debug
+//#define DEBUG 
 
 int 
 usage(int argc)
@@ -98,9 +104,14 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
 
     switch(event)
     {
+		//TODO:Seem the mouse wheel event not support (at least) on OSX
+		case EVENT_MOUSEWHEEL:
+			if (getMouseWheelDelta(flags)>0)
+				nMouseWheelScale=1;
+			else
+				nMouseWheelScale=-1;
+			break;
         case CV_EVENT_LBUTTONDOWN: 
-			nLastPointX=x;
-			nLastPointY=y;
 			bLeftButtonDown=true;
 			break;
         case CV_EVENT_LBUTTONUP: 
@@ -111,7 +122,7 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
 				if(( x - nLastPointX) > 0 ){
 					bDragLeft=true;
 				}
-				nDragScale= abs(x-nLastPointX)/DRAGSTEPSCALE;
+				dDragScale= abs(x-nLastPointX);
 			}
 			if(abs(x - nLastPointX) < abs( y - nLastPointY)){ //y axis
 				if(( y - nLastPointY) < 0 ){
@@ -120,14 +131,13 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
 				if(( y - nLastPointY) > 0 ){
 					bDragUp=true;
 				}
-				nDragScale= abs(y-nLastPointY)/DRAGSTEPSCALE;
+				dDragScale= abs(nLastPointY-y);
 			}
-			cout<<"Drag scale:"<<nDragScale<<endl;
 
 			bLeftButtonDown=false;
 			break;
         case CV_EVENT_MOUSEMOVE: 
-			/*if(true == bLeftButtonDown){
+			if(true == bLeftButtonDown){
 				if(abs(x - nLastPointX) > abs( y - nLastPointY)){ //x axis
 					if(( x - nLastPointX) < 0 ){
 						bDragRight=true;
@@ -135,23 +145,25 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
 					if(( x - nLastPointX) > 0 ){
 						bDragLeft=true;
 					}
-					nDragScale= abs(x-nLastPointX)/DRAGSTEPSCALE;
+					dDragScale= abs(x-nLastPointX);
 				}
 				if(abs(x - nLastPointX) < abs( y - nLastPointY)){ //y axis
 					if(( y - nLastPointY) < 0 ){
-						bDragUp=true;
-					}
-					if(( y - nLastPointY) > 0 ){
 						bDragDown=true;
 					}
-					nDragScale= abs(y-nLastPointY)/DRAGSTEPSCALE;
+					if(( y - nLastPointY) > 0 ){
+						bDragUp=true;
+					}
+					dDragScale= abs(nLastPointY-y);
 				}
-				cout<<"Drag scale:"<<nDragScale<<endl;
-			}*/
+			}
+
 			break;
 		default:
 			break;
 	}
+	nLastPointX=x;
+	nLastPointY=y;
 }
 
 int 
@@ -209,6 +221,7 @@ main(int argc, char **argv)
 	cv:: Mat matOne = cv::imread(strImgOne.c_str());
 	cv:: Mat matTwo = cv::imread(strImgTwo.c_str());
 	cv:: Mat matQuestion = cv::imread(strImgQuestion.c_str());
+	cv:: Mat matError = cv::imread(strImgError.c_str());
 
 	//Result file
 	ofstream resultList("result"+to_string(getPid())+".txt");
@@ -229,7 +242,7 @@ main(int argc, char **argv)
 		cerr << "Unable to read list file, exit!" << endl;
 		return -1;
 	}
-	/* Iterator through the files list */
+	/* Iterate through the files list */
 	for (int iter = 0; iter < nRepeatTimes; ++iter) {
 		cout<<"Iteration #"<<iter<<endl;
 		cout<<"-------------------------------"<<endl;
@@ -249,7 +262,6 @@ main(int argc, char **argv)
 			static uniform_real_distribution < double >u(0.0, 1.0);
 			double dValue=u(e);
 
-			cout<<"dRatio: "<<dRatio<<endl;
 			if ( dRatio != 1.0){
 				cout<<"Random value: "<<dValue<<endl;
 
@@ -263,8 +275,8 @@ main(int argc, char **argv)
 			string		strCompA = string(bufA);
 			string		strCompB = string(bufB);
 			string		strCat = string(category);
-			cout << strCompA << endl;
-			cout << strCompB << endl;
+			/*cout << strCompA << endl;
+			cout << strCompB << endl;*/
 
 			cv:: Mat matAOrig = cv::imread(strCompA.c_str());
 			cv:: Mat matBOrig = cv::imread(strCompB.c_str());
@@ -279,163 +291,163 @@ main(int argc, char **argv)
 			cvSetMouseCallback(strWindowName.c_str(), mouseCallback, NULL);
 
 			int		nSelection = 0;
-			double   fScale4DisplayA = std::min(1.0,((double)nGoodWidth/matAOrig.cols));
-			double   fScale4DisplayB = std::min(1.0,((double)nGoodWidth/matBOrig.cols));
-			double   fScaleA = fScale4DisplayA;
-			double   fScaleB = fScale4DisplayB;
+			double   dScale4DisplayA = std::min(1.0,((double)nGoodWidth/matAOrig.cols));
+			double   dScale4DisplayB = std::min(1.0,((double)nGoodWidth/matBOrig.cols));
+			double   dScaleA = dScale4DisplayA;
+			double   dScaleB = dScale4DisplayB;
 			double		dOffsetAX = 0;
 			double		dOffsetAY = 0;
 			double		dOffsetBX = 0;
 			double		dOffsetBY = 0;
-			double dMaxOffsetStepAX=0;
-			double dMaxOffsetStepAY=0;
-			double dMaxOffsetStepBX=0;
-			double dMaxOffsetStepBY=0;
+			double dMaxOffsetAX=0;
+			double dMaxOffsetAY=0;
+			double dMaxOffsetBX=0;
+			double dMaxOffsetBY=0;
 
 			//Resize original image for appropriate display 
-			resize(matAOrig, matA, Size(0, 0), fScale4DisplayA, fScale4DisplayA, INTER_LINEAR);
-			resize(matBOrig, matB, Size(0, 0), fScale4DisplayB, fScale4DisplayB, INTER_LINEAR);
+			resize(matAOrig, matA, Size(0, 0), dScale4DisplayA, dScale4DisplayA, INTER_LINEAR);
+			resize(matBOrig, matB, Size(0, 0), dScale4DisplayB, dScale4DisplayB, INTER_LINEAR);
 
 			while (1) {
-				cout << "ScaleA: " << fScaleA << endl;
-				cout << "ScaleB: " << fScaleB << endl;
+				/*cout << "ScaleA: " << dScaleA << endl;
+				cout << "ScaleB: " << dScaleB << endl;
 				cout << "dOffsetAX: "<< dOffsetAX <<endl;
 				cout << "dOffsetAY: "<< dOffsetAY <<endl;
 				cout << "dOffsetBX: "<< dOffsetBX <<endl;
-				cout << "dOffsetBY: "<< dOffsetBY <<endl;
+				cout << "dOffsetBY: "<< dOffsetBY <<endl;*/
 
-				resize(matAOrig, matAProcessed, Size(0, 0), fScaleA, fScaleA, INTER_LINEAR);
-				resize(matBOrig, matBProcessed, Size(0, 0), fScaleB, fScaleB, INTER_LINEAR);
-				if ((fScaleA > fScale4DisplayA) && (fScaleB > fScale4DisplayB))
+				resize(matAOrig, matAProcessed, Size(0, 0), dScaleA, dScaleA, INTER_LINEAR);
+				resize(matBOrig, matBProcessed, Size(0, 0), dScaleB, dScaleB, INTER_LINEAR);
+				if ((dScaleA > dScale4DisplayA) && (dScaleB > dScale4DisplayB))
 				{
-					dMaxOffsetStepAX=abs((double)matAProcessed.cols - (double)matA.cols)/nOffsetStride/2;
-					dMaxOffsetStepAY=abs((double)matAProcessed.rows - (double)matA.rows)/nOffsetStride/2;
-					dMaxOffsetStepBX=abs((double)matBProcessed.cols - (double)matB.cols)/nOffsetStride/2;
-					dMaxOffsetStepBY=abs((double)matBProcessed.rows -(double)matB.rows)/nOffsetStride/2;
-
+					dMaxOffsetAX=abs((double)matAProcessed.cols - (double)matA.cols)/2;
+					dMaxOffsetAY=abs((double)matAProcessed.rows - (double)matA.rows)/2;
+					dMaxOffsetBX=abs((double)matBProcessed.cols - (double)matB.cols)/2;
+					dMaxOffsetBY=abs((double)matBProcessed.rows -(double)matB.rows)/2;
 					//If the current offset beyond the maxim value of the offset step due to the zoomin & zoomout,
 					//Adjust the value accordingly
-					if( dOffsetAX > dMaxOffsetStepAX ){
-						dOffsetAX = dMaxOffsetStepAX ;
+					if( dOffsetAX > dMaxOffsetAX ){
+						dOffsetAX = dMaxOffsetAX ;
 					}
-					if( dOffsetAY > dMaxOffsetStepAY ){
-						dOffsetAY = dMaxOffsetStepAY ;
+					if( dOffsetAY > dMaxOffsetAY ){
+						dOffsetAY = dMaxOffsetAY ;
 					}
-					if( dOffsetAX < -dMaxOffsetStepAX ){
-						dOffsetAX = -dMaxOffsetStepAX ;
+					if( dOffsetAX < -dMaxOffsetAX ){
+						dOffsetAX = -dMaxOffsetAX ;
 					}
-					if( dOffsetAY < -dMaxOffsetStepAY ){
-						dOffsetAY = -dMaxOffsetStepAY ;
+					if( dOffsetAY < -dMaxOffsetAY ){
+						dOffsetAY = -dMaxOffsetAY ;
 					}
-					if( dOffsetBX > dMaxOffsetStepBX ){
-						dOffsetBX = dMaxOffsetStepBX ;
+					if( dOffsetBX > dMaxOffsetBX ){
+						dOffsetBX = dMaxOffsetBX ;
 					}
-					if( dOffsetBY > dMaxOffsetStepBY ){
-						dOffsetBY = dMaxOffsetStepBY ;
+					if( dOffsetBY > dMaxOffsetBY ){
+						dOffsetBY = dMaxOffsetBY ;
 					}
-					if( dOffsetBX < -dMaxOffsetStepBX ){
-						dOffsetBX = -dMaxOffsetStepBX ;
+					if( dOffsetBX < -dMaxOffsetBX ){
+						dOffsetBX = -dMaxOffsetBX ;
 					}
-					if( dOffsetBY < -dMaxOffsetStepBY ){
-						dOffsetBY = -dMaxOffsetStepBY ;
+					if( dOffsetBY < -dMaxOffsetBY ){
+						dOffsetBY = -dMaxOffsetBY ;
 					}
 
-					cout<<"A Max step: "<<dMaxOffsetStepAX<<","<<dMaxOffsetStepAY<<endl;
-					cout<<"B Max step: "<<dMaxOffsetStepBX<<","<<dMaxOffsetStepBY<<endl;
+#ifdef DEBUG
+					cout<<"A Max step: "<<dMaxOffsetAX<<","<<dMaxOffsetAY<<endl;
+					cout<<"B Max step: "<<dMaxOffsetBX<<","<<dMaxOffsetBY<<endl;
 					cout<<"A Offset: "<<dOffsetAX<<","<<dOffsetAY<<endl;
 					cout<<"B Offset: "<<dOffsetBX<<","<<dOffsetBY<<endl;
+#endif
 
 					/*				
 					cout << "Original imageA size: ("<<matA.cols << "," << matA.rows <<")"<< endl;
 					cout << "Original imageB size: ("<<matB.cols << "," << matB.rows <<")"<< endl;
 					cout << "Zoomed imageA size: ("<<matAProcessed.cols << "," << matAProcessed.rows <<")"<< endl;
 					cout << "Zoomed imageB size: ("<<matBProcessed.cols << "," << matBProcessed.rows <<")"<< endl;
-					cout << "Max X/Y offset step: "<<dMaxOffsetStepAX<<"/"<<dMaxOffsetStepAY<<endl;
+					cout << "Max X/Y offset step: "<<dMaxOffsetAX<<"/"<<dMaxOffsetAY<<endl;
 					*/
 
-					//TODO: display is not complete if the fScaleA & fScaleB applied
-					//The magnitude of the pan action should be adjust as per the scale value
-					/*int nPlanOffsetAX= dOffsetAX * nOffsetStride * fScaleA ;
-					int nPlanOffsetAY= dOffsetAY * nOffsetStride * fScaleA ;
-					int nPlanOffsetBX= dOffsetBX * nOffsetStride * fScaleB ;
-					int nPlanOffsetBY= dOffsetBY * nOffsetStride * fScaleB ;*/
-					int nPlanOffsetAX= dOffsetAX * nOffsetStride ;
-					int nPlanOffsetAY= dOffsetAY * nOffsetStride ;
-					int nPlanOffsetBX= dOffsetBX * nOffsetStride ;
-					int nPlanOffsetBY= dOffsetBY * nOffsetStride ;
+					int nPlanOffsetAX= dOffsetAX ;
+					int nPlanOffsetAY= dOffsetAY ;
+					int nPlanOffsetBX= dOffsetBX ;
+					int nPlanOffsetBY= dOffsetBY ;
 
 					int		nDiffAX = matAProcessed.cols - matA.cols;
 					int		nDiffAY = matAProcessed.rows - matA.rows;
-					int		nNewAX = nDiffAX / 2;
-					int		nNewAY = nDiffAY / 2;
+					int		nMarginAX = nDiffAX / 2;
+					int		nMarginAY = nDiffAY / 2;
 
-					if ((nNewAX + matA.cols + nPlanOffsetAX) >= matAProcessed.cols) {
-						nNewAX = matAProcessed.cols - matA.cols;
+					if ((nMarginAX + matA.cols + nPlanOffsetAX) >= matAProcessed.cols) {
+						nMarginAX = matAProcessed.cols - matA.cols;
 					}
 					else{
-						if ((nNewAX + nPlanOffsetAX) <= 0) {
-							nNewAX = 0;
+						if ((nMarginAX + nPlanOffsetAX) <= 0) {
+							nMarginAX = 0;
 						}
 						else{
-							nNewAX += nPlanOffsetAX;
+							nMarginAX += nPlanOffsetAX;
 						}
 					}
 
-					if ((nNewAY + matA.rows + nPlanOffsetAY) >= matAProcessed.rows) {
-						nNewAY = matAProcessed.rows - matA.rows;
+					if ((nMarginAY + matA.rows + nPlanOffsetAY) >= matAProcessed.rows) {
+						nMarginAY = matAProcessed.rows - matA.rows;
 					}
 					else{
-						if ((nNewAY + nPlanOffsetAY) <= 0) {
-							nNewAY = 0;
+						if ((nMarginAY + nPlanOffsetAY) <= 0) {
+							nMarginAY = 0;
 						}
 						else{
-							nNewAY += nPlanOffsetAY;
+							nMarginAY += nPlanOffsetAY;
 						}
 					}
 
 					int		nDiffBX = matBProcessed.cols - matB.cols;
 					int		nDiffBY = matBProcessed.rows - matB.rows;
-					int		nNewBX = nDiffBX / 2;
-					int		nNewBY = nDiffBY / 2;
+					int		nMarginBX = nDiffBX / 2;
+					int		nMarginBY = nDiffBY / 2;
 
-					if ((nNewBX + matB.cols + nPlanOffsetBX) >= matBProcessed.cols) {
-						nNewBX = matBProcessed.cols - matB.cols;
+					if ((nMarginBX + matB.cols + nPlanOffsetBX) >= matBProcessed.cols) {
+						nMarginBX = matBProcessed.cols - matB.cols;
 					}
 					else{
-						if ((nNewBX + nPlanOffsetBX) <= 0) {
-							nNewBX = 0;
+						if ((nMarginBX + nPlanOffsetBX) <= 0) {
+							nMarginBX = 0;
 						}
 						else{
-							nNewBX += nPlanOffsetBX;
+							nMarginBX += nPlanOffsetBX;
 						}
 					}
 
-					if ((nNewBY + matB.rows + nPlanOffsetBY) >= matBProcessed.rows) {
-						nNewBY = matBProcessed.rows - matB.rows;
+					if ((nMarginBY + matB.rows + nPlanOffsetBY) >= matBProcessed.rows) {
+						nMarginBY = matBProcessed.rows - matB.rows;
 					}
 					else{
-						if ((nNewBY + nPlanOffsetBY) <= 0) {
-							nNewBY = 0;
+						if ((nMarginBY + nPlanOffsetBY) <= 0) {
+							nMarginBY = 0;
 						}
 						else{
-							nNewBY += nPlanOffsetBY;
+							nMarginBY += nPlanOffsetBY;
 						}
 					}
 
 					//ROI
-					Rect		rectRoiA  (nNewAX, nNewAY, matA.cols, matA.rows);
+					Rect		rectRoiA  (nMarginAX, nMarginAY, matA.cols, matA.rows);
 					matAProcessed = matAProcessed(rectRoiA);
-					Rect		rectRoiB  (nNewBX, nNewBY, matB.cols, matB.rows);
+					Rect		rectRoiB  (nMarginBX, nMarginBY, matB.cols, matB.rows);
 					matBProcessed = matBProcessed(rectRoiB);
-					resize(matAProcessed, matAProcessed, Size(matA.cols, matA.rows), 0, 0, INTER_LINEAR);
-					resize(matBProcessed, matBProcessed, Size(matB.cols, matB.rows), 0, 0, INTER_LINEAR);
+					//resize is optional here
+					//resize(matAProcessed, matAProcessed, Size(matA.cols, matA.rows), 0, 0, INTER_LINEAR);
+					//resize(matBProcessed, matBProcessed, Size(matB.cols, matB.rows), 0, 0, INTER_LINEAR);
 
 				}
 
 				mergeImg(bgrd, matAProcessed, matBProcessed);
 
 				cv::		imshow(strWindowName, bgrd);
-				cv::		moveWindow(strWindowName, 512, 0);
+				static bool bFirstRun=true;
+				if(bFirstRun){
+					cv::		moveWindow(strWindowName, 512, 0);
+					bFirstRun=false;
+				}
 
 				cv::Mat matIndicator;
 
@@ -446,6 +458,10 @@ main(int argc, char **argv)
 				case 2:
 					matIndicator=matTwo.clone();
 					break;
+				case -1:
+					cv::imshow(strIndicator,matError);
+					waitKey(100);
+					nSelection=0;
 				default:
 					matIndicator=matQuestion.clone();
 					break;
@@ -453,13 +469,17 @@ main(int argc, char **argv)
 
 				//Draw indicator text
 				Size szText=getTextSize(strCat,FONT_HERSHEY_COMPLEX,3,5,0);
-				Point ptOrg((matIndicator.cols - szText.width)/2,(matIndicator.rows)/2);
+				Point ptOrg((matIndicator.cols - szText.width)/2,(matIndicator.rows)/4);
 				putText(matIndicator,strCat,ptOrg,FONT_HERSHEY_COMPLEX,3,Scalar(0,255,0));
 				cv::imshow(strIndicator, matIndicator);
 
-				int		input_key = cvWaitKey(50);
+				int		input_key = cvWaitKey(1);
 				//int		input_key = cvWaitKey();
-				cout <<"Input key: "<< input_key << endl;
+				
+				//For non timeout event
+				if(-1 != input_key){
+					cout <<"Input key: "<< input_key << endl;
+				}
 
 				bool		bEnter = false;
 
@@ -473,15 +493,15 @@ main(int argc, char **argv)
 					cout << "2nd picture selected as better." << endl;
 					break;
 				case 61: //+
-					if ((fScaleA < MAXSCALE) && (fScaleB < MAXSCALE)) {
-						fScaleA += fCoef;
-						fScaleB += fCoef;
+					if ((dScaleA < MAXSCALE) && (dScaleB < MAXSCALE)) {
+						dScaleA += dCoef;
+						dScaleB += dCoef;
 					}
 					break;
 				case 45: //-
-					if ((fScaleA > MINSCALE) && (fScaleB > MINSCALE)) {
-						fScaleA -= fCoef;
-						fScaleB -= fCoef;
+					if ((dScaleA > MINSCALE) && (dScaleB > MINSCALE)) {
+						dScaleA -= dCoef;
+						dScaleB -= dCoef;
 					}
 					else{
 						dOffsetAX=0;
@@ -489,40 +509,40 @@ main(int argc, char **argv)
 					}
 					break;
 				case 63233: //Down   #TODO:Check the key on different platform
-					if(dOffsetAY < dMaxOffsetStepAY && dOffsetAY >= (-dMaxOffsetStepAY)){
-						dOffsetAY += 1;
+					if(dOffsetAY < dMaxOffsetAY && dOffsetAY >= (-dMaxOffsetAY)){
+						dOffsetAY += 1 * OFFSETSTRIDE;
 					}
-					if(dOffsetBY < dMaxOffsetStepBY && dOffsetBY >= (-dMaxOffsetStepBY)){
-						dOffsetBY += 1;
+					if(dOffsetBY < dMaxOffsetBY && dOffsetBY >= (-dMaxOffsetBY)){
+						dOffsetBY += 1 * OFFSETSTRIDE;
 					}
 					break;
 				case 63232: //Up
-					if(dOffsetAY <= dMaxOffsetStepAY && dOffsetAY > (-dMaxOffsetStepAY)){
-						dOffsetAY -= 1;
+					if(dOffsetAY <= dMaxOffsetAY && dOffsetAY > (-dMaxOffsetAY)){
+						dOffsetAY -= 1 * OFFSETSTRIDE;
 					}
-					if(dOffsetBY <= dMaxOffsetStepBY && dOffsetBY > (-dMaxOffsetStepBY)){
-						dOffsetBY -= 1;
+					if(dOffsetBY <= dMaxOffsetBY && dOffsetBY > (-dMaxOffsetBY)){
+						dOffsetBY -= 1 * OFFSETSTRIDE;
 					}
 					break;
 				case 63234: //Left
-					if(dOffsetAX <= dMaxOffsetStepAX && dOffsetAX > (-dMaxOffsetStepAX)){
-						dOffsetAX -= 1;
+					if(dOffsetAX <= dMaxOffsetAX && dOffsetAX > (-dMaxOffsetAX)){
+						dOffsetAX -= 1 * OFFSETSTRIDE;
 					}
-					if(dOffsetBX <= dMaxOffsetStepBX && dOffsetBX > (-dMaxOffsetStepBX)){
-						dOffsetBX -= 1;
+					if(dOffsetBX <= dMaxOffsetBX && dOffsetBX > (-dMaxOffsetBX)){
+						dOffsetBX -= 1 * OFFSETSTRIDE;
 					}
 					break;
 				case 63235: //Right
-					if(dOffsetAX < dMaxOffsetStepAX && dOffsetAX >= (-dMaxOffsetStepAX)){
-						dOffsetAX += 1;
+					if(dOffsetAX < dMaxOffsetAX && dOffsetAX >= (-dMaxOffsetAX)){
+						dOffsetAX += 1 * OFFSETSTRIDE;
 					}
-					if(dOffsetBX < dMaxOffsetStepBX && dOffsetBX >= (-dMaxOffsetStepBX)){
-						dOffsetBX += 1;
+					if(dOffsetBX < dMaxOffsetBX && dOffsetBX >= (-dMaxOffsetBX)){
+						dOffsetBX += 1 * OFFSETSTRIDE;
 					}
 					break;
 				case 114: //R key
-					fScaleA = fScale4DisplayA ;
-					fScaleB = fScale4DisplayB ;
+					dScaleA = dScale4DisplayA ;
+					dScaleB = dScale4DisplayB ;
 					dOffsetAX = 0;
 					dOffsetAY = 0;
 					dOffsetBX = 0;
@@ -535,57 +555,63 @@ main(int argc, char **argv)
 				case 27: //ESC
 					cout << "Cancel the work." << endl;
 					return 0;
-				case -1: //timeout
+				case -1://timeout
 					break;
 				default:
-					nSelection = 0;
+					nSelection = -1;
 					cerr << "Invalid selection." << endl;
 					break;
 				}
 
 				//Check the mouse event
 				//TODO:somethine wrong with the following snippet
-				if((false == bLeftButtonDown ) ){
+				if((true == bLeftButtonDown ) ){
+#ifdef DEBUG
+					cout<<"------------------------------"<<endl;
+					cout<<"dDragScale: "<<dDragScale<<endl;
+					cout<<"dScaleA: "<<dScaleA<<endl;
+					cout<<"dScaleB: "<<dScaleB<<endl;
+					cout<<"dScale4DisplayA: "<<dScale4DisplayA<<endl;
+					cout<<"dScale4DisplayB: "<<dScale4DisplayB<<endl;
+#endif
 					if(true == bDragLeft){
-						cout<<"DragLeft.................."<<endl;
-						if(dOffsetAX <= dMaxOffsetStepAX && dOffsetAX > (-dMaxOffsetStepAX)){
-							//dOffsetAX -= 1;
-							dOffsetAX -= nDragScale;
+						if(dOffsetAX <= dMaxOffsetAX && dOffsetAX > (-dMaxOffsetAX)){
+							dOffsetAX -= dDragScale;
+							//dOffsetAX -= dDragScale/dScale4DisplayA ;
 						}
-						if(dOffsetBX <= dMaxOffsetStepBX && dOffsetBX > (-dMaxOffsetStepBX)){
-							//dOffsetBX -= 1;
-							dOffsetBX -= nDragScale;
+						if(dOffsetBX <= dMaxOffsetBX && dOffsetBX > (-dMaxOffsetBX)){
+							dOffsetBX -= dDragScale;
+							//dOffsetBX -= dDragScale/dScale4DisplayB ;
 						}
 					}
 					if(true == bDragRight){
-						cout<<"DragRight.................."<<endl;
-						if(dOffsetAX < dMaxOffsetStepAX && dOffsetAX >= (-dMaxOffsetStepAX)){
-							//dOffsetAX += 1;
-							dOffsetAX += nDragScale;
+						if(dOffsetAX < dMaxOffsetAX && dOffsetAX >= (-dMaxOffsetAX)){
+							dOffsetAX += dDragScale;
+						//	dOffsetAX += dDragScale/dScale4DisplayA ;
 						}
-						if(dOffsetBX < dMaxOffsetStepBX && dOffsetBX >= (-dMaxOffsetStepBX)){
-							//dOffsetBX += 1;
-							dOffsetBX += nDragScale;
+						if(dOffsetBX < dMaxOffsetBX && dOffsetBX >= (-dMaxOffsetBX)){
+							dOffsetBX += dDragScale;
+							//dOffsetBX += dDragScale/dScale4DisplayB ;
 						}
 					}
 					if(true == bDragUp){
-						if(dOffsetAY <= dMaxOffsetStepAY && dOffsetAY > (-dMaxOffsetStepAY)){
-							//dOffsetAY -= 1;
-							dOffsetAY -= nDragScale;
+						if(dOffsetAY <= dMaxOffsetAY && dOffsetAY > (-dMaxOffsetAY)){
+							dOffsetAY -= dDragScale;
+							//dOffsetAY -= dDragScale/dScale4DisplayA ;
 						}
-						if(dOffsetBY <= dMaxOffsetStepBY && dOffsetBY > (-dMaxOffsetStepBY)){
-							//dOffsetBY -= 1;
-							dOffsetBY -= nDragScale;
+						if(dOffsetBY <= dMaxOffsetBY && dOffsetBY > (-dMaxOffsetBY)){
+							dOffsetBY -= dDragScale;
+							//dOffsetBY -= dDragScale/dScale4DisplayB ;
 						}
 					}
 					if(true == bDragDown){
-						if(dOffsetAY < dMaxOffsetStepAY && dOffsetAY >= (-dMaxOffsetStepAY)){
-							//dOffsetAY += 1;
-							dOffsetAY += nDragScale;
+						if(dOffsetAY < dMaxOffsetAY && dOffsetAY >= (-dMaxOffsetAY)){
+							dOffsetAY += dDragScale;
+							//dOffsetAY += dDragScale/dScale4DisplayA ;
 						}
-						if(dOffsetBY < dMaxOffsetStepBY && dOffsetBY >= (-dMaxOffsetStepBY)){
-							//dOffsetBY += 1;
-							dOffsetBY += nDragScale;
+						if(dOffsetBY < dMaxOffsetBY && dOffsetBY >= (-dMaxOffsetBY)){
+							dOffsetBY += dDragScale;
+							//dOffsetBY += dDragScale/dScale4DisplayB ;
 						}
 					}
 					bDragLeft=false;
@@ -594,13 +620,35 @@ main(int argc, char **argv)
 					bDragDown=false;
 				}
 
+				if(-1 == nMouseWheelScale)
+				{
+					if ((dScaleA > MINSCALE) && (dScaleB > MINSCALE)) {
+						dScaleA -= dCoef;
+						dScaleB -= dCoef;
+					}
+					else{
+						dOffsetAX=0;
+						dOffsetAY=0;
+					}
+					nMouseWheelScale=0;
+				}
+				else{
+					if(1 == nMouseWheelScale){
+						if ((dScaleA < MAXSCALE) && (dScaleB < MAXSCALE)) {
+							dScaleA += dCoef;
+							dScaleB += dCoef;
+						}
+						nMouseWheelScale=0;
+					}
+				}
+
 				if (bEnter) {
 					cout << "Your selection is: " << nSelection << endl;
 					if (nSelection == 1 || nSelection == 2) {
 						resultList << strCat << " "<< strCompA << " " << strCompB << " " << nSelection << endl;
 						nSelection = 0;
-						fScaleA = fScale4DisplayA ;
-						fScaleB = fScale4DisplayB ;
+						dScaleA = dScale4DisplayA ;
+						dScaleB = dScale4DisplayB ;
 						dOffsetAX = 0;
 						dOffsetAY = 0;
 						dOffsetBX = 0;
