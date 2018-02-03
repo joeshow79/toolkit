@@ -115,25 +115,6 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
 			bLeftButtonDown=true;
 			break;
         case CV_EVENT_LBUTTONUP: 
-			if(abs(x - nLastPointX) > abs( y - nLastPointY)){ //x axis
-				if(( x - nLastPointX) < 0 ){
-					bDragRight=true;
-				}
-				if(( x - nLastPointX) > 0 ){
-					bDragLeft=true;
-				}
-				dDragScale= abs(x-nLastPointX);
-			}
-			if(abs(x - nLastPointX) < abs( y - nLastPointY)){ //y axis
-				if(( y - nLastPointY) < 0 ){
-					bDragDown=true;
-				}
-				if(( y - nLastPointY) > 0 ){
-					bDragUp=true;
-				}
-				dDragScale= abs(nLastPointY-y);
-			}
-
 			bLeftButtonDown=false;
 			break;
         case CV_EVENT_MOUSEMOVE: 
@@ -655,6 +636,8 @@ main(int argc, char **argv)
 						dOffsetBY = 0;
 						break;
 					} else {
+						cv::imshow(strIndicator,matError);
+						waitKey(100);
 						cerr << "Pleaes slelect 1 or 2 for the better one before iterate to next comparison." << endl;
 					}
 				}
