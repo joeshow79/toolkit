@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.17.1",
+    "axios": "^0.19.2",
     "bluebird": "^3.5.1",
     "file-type": "^7.3.0",
     "flickr-sdk": "^3.5.0",
