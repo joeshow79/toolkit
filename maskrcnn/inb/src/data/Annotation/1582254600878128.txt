@@ -1,0 +1,8 @@
+# Compatible with PASCAL Annotation Version 1.00
+Image filename : "data/PNGImages/1582254600878128.png
+Image size (X x Y x C) : 672 x 512 x 1
+Database : "The JiaSen-InstantNoodleBox Database"
+Objects with ground truth : 0 {  }
+# Note there may be some objects not included in the ground truth list for they are severe-occluded
+# or have very small size.
+# Top left pixel co-ordinates : (1, 1)

@@ -1,0 +1,12 @@
+# Compatible with PASCAL Annotation Version 1.00
+Image filename : "data/PNGImages/1582254585244214.png
+Image size (X x Y x C) : 672 x 512 x 1
+Database : "The JiaSen-InstantNoodleBox Database"
+Objects with ground truth : 1 {  "PackageDefect" }
+# Note there may be some objects not included in the ground truth list for they are severe-occluded
+# or have very small size.
+# Top left pixel co-ordinates : (1, 1)
+# Details for defect 1 ("PackageDefect")
+Original label for object 1 "PackageDefect" : "data"
+Bounding box for object 0 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (386, 149) - (595, 311)
+Pixel mask for object 1 "PackageDefect" : "data/Masks/1582254585244214.mask.png"

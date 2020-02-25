@@ -1,0 +1,32 @@
+# Compatible with PASCAL Annotation Version 1.00
+Image filename : "data/PNGImages/1582254599524958.png
+Image size (X x Y x C) : 672 x 512 x 1
+Database : "The JiaSen-InstantNoodleBox Database"
+Objects with ground truth : 6 {  "PackageDefect" "PackageDefect" "PackageDefect" "PackageDefect" "PackageDefect" "PackageDefect" }
+# Note there may be some objects not included in the ground truth list for they are severe-occluded
+# or have very small size.
+# Top left pixel co-ordinates : (1, 1)
+# Details for defect 1 ("PackageDefect")
+Original label for object 1 "PackageDefect" : "data"
+Bounding box for object 0 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (51, 60) - (94, 126)
+Pixel mask for object 1 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
+# Details for defect 2 ("PackageDefect")
+Original label for object 2 "PackageDefect" : "data"
+Bounding box for object 1 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (113, 141) - (122, 158)
+Pixel mask for object 2 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
+# Details for defect 3 ("PackageDefect")
+Original label for object 3 "PackageDefect" : "data"
+Bounding box for object 2 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (128, 157) - (139, 183)
+Pixel mask for object 3 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
+# Details for defect 4 ("PackageDefect")
+Original label for object 4 "PackageDefect" : "data"
+Bounding box for object 3 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (150, 171) - (159, 194)
+Pixel mask for object 4 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
+# Details for defect 5 ("PackageDefect")
+Original label for object 5 "PackageDefect" : "data"
+Bounding box for object 4 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (287, 268) - (317, 293)
+Pixel mask for object 5 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
+# Details for defect 6 ("PackageDefect")
+Original label for object 6 "PackageDefect" : "data"
+Bounding box for object 5 "PackageDefect" (Xmin, Ymin) - (Xmax, Ymax) : (354, 74) - (636, 322)
+Pixel mask for object 6 "PackageDefect" : "data/Masks/1582254599524958.mask.png"
