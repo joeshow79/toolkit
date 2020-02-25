@@ -2,19 +2,18 @@ import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-from engine import train_one_epoch, evaluate
-import utils
-import os
-import sys
 import numpy as np
 from PIL import Image, ImageDraw
 import transforms as T
 from INBDataset import INBDataset
 
 DEBUG = False
+
+
 def print_if_debug(msg):
     if DEBUG:
-       print(msg)
+        print(msg)
+
 
 def show_sample(img, target, show=True):
     """
@@ -71,7 +70,7 @@ def show_sample_and_pred(img, target, pred, output_file=None):
         print_if_debug('bbox:{}'.format(bbox))
         draw.rectangle(bbox.numpy(), outline=(255, 255, 255))
 
-    if output_file != None:
+    if output_file is not None:
         image.save(output_file)
 
     return image
@@ -96,6 +95,7 @@ def get_model_instance_segmentation(num_classes):
 
     return model
 
+
 def get_transform(train):
     transforms = []
     transforms.append(T.ToTensor())
@@ -103,58 +103,57 @@ def get_transform(train):
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
 
+
 def inference(dataset, data_index=1, img_path=None):
-    #device = torch.device("cuda")
+    # device = torch.device("cuda")
     device = torch.device("cpu")
 
-    if data_index !=None:
+    if data_index is not None:
         input_img, target = dataset[data_index]
-    #show_sample(input_img, target)
+    # show_sample(input_img, target)
 
-    #print_if_debug("debug:{}".format(input_img))
+    # print_if_debug("debug:{}".format(input_img))
 
     batch_input_img = input_img.unsqueeze(0)
-    debug_info = batch_input_img.numpy()
-    #print_if_debug("debug numpy shape:{}".format(debug_info.shape))
+    # debug_info = batch_input_img.numpy()
+    # print_if_debug("debug numpy shape:{}".format(debug_info.shape))
 
     model = get_model_instance_segmentation(2)
 
     checkpoint = torch.load('./checkpoint/inb_epoch_9')
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
-    #transform = get_transform(False)
-    #transform = T.Compose([
-        #T.ToTensor()
-    #])
+    # transform = get_transform(False)
+    # transform = T.Compose([ T.ToTensor() ])
 
-    #img = Image.open(img_path)
-    #img = img.unsqueeze(0).to(device)
-    #img = img.to(device)
+    # img = Image.open(img_path)
+    # img = img.unsqueeze(0).to(device)
+    # img = img.to(device)
 
-    #img = utils.load_image(img_path)
-    #img = transform(img, None)
-    #print_if_debug('image:{}'.format(img))
-    #print_if_debug('image shape 1:{}'.format(img[0].numpy().shape))
+    # img = utils.load_image(img_path)
+    # img = transform(img, None)
+    # print_if_debug('image:{}'.format(img))
+    # print_if_debug('image shape 1:{}'.format(img[0].numpy().shape))
 
     with torch.no_grad():
-        #model.to(device)
+        # model.to(device)
         pred = model(batch_input_img)
         print_if_debug("type:{}".format(type(pred[0])))
         print_if_debug(pred[0])
-    #output = pred[0]['masks'].numpy().squeeze()
+    # output = pred[0]['masks'].numpy().squeeze()
     mask = pred[0]['masks']
     print_if_debug('mask shape 1:{}'.format(mask.shape))
     print_if_debug('masks:{}'.format(mask))
-    #mask = mask.detach().clamp(0,255).numpy()
+    # mask = mask.detach().clamp(0,255).numpy()
     mask = mask.detach().numpy()
     print_if_debug('mask shape 2:{}'.format(mask.shape))
-    
+
     mask = mask[0]
     mask = mask.transpose(1, 2, 0).astype("uint8")
-    mask = mask[:,:,0]
+    mask = mask[:, :, 0]
     img = Image.fromarray(mask)
     img.save('mask.png')
-    #np.savetxt('test.txt', img, fmt='%d')
+    # np.savetxt('test.txt', img, fmt='%d')
     np.savetxt('test.txt', img, fmt='%1.4e')
 
     print_if_debug('masks:{}'.format(mask))
@@ -162,15 +161,14 @@ def inference(dataset, data_index=1, img_path=None):
     print_if_debug('boxes:{}'.format(pred[0]['boxes']))
     print_if_debug('labels:{}'.format(pred[0]['labels']))
 
-    show_sample_and_pred(input_img, target, pred, 'out/'+str(data_index)+'.png')
+    show_sample_and_pred(input_img, target, pred,
+                         'out/'+str(data_index)+'.png')
+
 
 if __name__ == '__main__':
-   #img_path = sys.argv[1] 
+    dataset = INBDataset('data', get_transform(train=False))
+    indices = torch.randperm(len(dataset)).tolist()
+    dataset_test = torch.utils.data.Subset(dataset, indices[-50:])
 
-   dataset = INBDataset('data', get_transform(train=False))
-   indices = torch.randperm(len(dataset)).tolist()
-   dataset_test = torch.utils.data.Subset(dataset, indices[-50:])
-
-   for image_index in range(0, 50):
-      inference(dataset_test, image_index);
-
+    for image_index in range(0, 1):
+        inference(dataset_test, image_index)

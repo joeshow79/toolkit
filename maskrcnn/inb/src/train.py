@@ -5,9 +5,9 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from engine import train_one_epoch, evaluate
 import utils
 import os
-import sys
 import transforms as T
 from INBDataset import INBDataset
+
 
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
@@ -28,12 +28,14 @@ def get_model_instance_segmentation(num_classes):
 
     return model
 
+
 def get_transform(train):
     transforms = []
     transforms.append(T.ToTensor())
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
+
 
 def eval(img_path):
     model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
@@ -42,13 +44,12 @@ def eval(img_path):
      dataset, batch_size=2, shuffle=True, num_workers=4,
      collate_fn=utils.collate_fn)
     # For Training
-    images,targets = next(iter(data_loader))
+    images, targets = next(iter(data_loader))
     images = list(image for image in images)
     targets = [{k: v for k, v in t.items()} for t in targets]
 
     model.eval()
-    #output = model(images,targets)   # Returns losses and detections
-    output = model(images)   # Returns losses and detections
+    # output = model(images,targets)   # Returns losses and detections
     # For inference
     x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
     predictions = model(x)           # Returns predictions
@@ -58,7 +59,8 @@ def eval(img_path):
 
 def train():
     # train on the GPU or on the CPU, if a GPU is not available
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device('cuda') if torch.cuda.is_available()\
+        else torch.device('cpu')
 
     # our dataset has two classes only - background and person
     num_classes = 2
@@ -100,9 +102,12 @@ def train():
 
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-	
-        torch.save({'epoch':epoch, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict(), }, os.path.join("checkpoint/", "inb_epoch_" + str(epoch)))
+        train_one_epoch(model, optimizer, data_loader,
+                        device, epoch, print_freq=10)
+
+        torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(), },
+                   os.path.join("checkpoint/", "inb_epoch_" + str(epoch)))
 
         # update the learning rate
         lr_scheduler.step()
@@ -111,5 +116,6 @@ def train():
 
     print("That's it!")
 
+
 if __name__ == '__main__':
-   train()
+    train()
