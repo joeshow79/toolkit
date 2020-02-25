@@ -102,7 +102,7 @@ def train():
         # train for one epoch, printing every 10 iterations
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
 	
-        torch.save({'epoch':epoch, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict(), }, os.path.join("checkpoint/", "ped_epoch_" + str(epoch)))
+        torch.save({'epoch':epoch, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict(), }, os.path.join("checkpoint/", "inb_epoch_" + str(epoch)))
 
         # update the learning rate
         lr_scheduler.step()

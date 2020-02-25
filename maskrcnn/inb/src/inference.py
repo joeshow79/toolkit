@@ -119,8 +119,7 @@ def inference(dataset, data_index=1, img_path=None):
 
     model = get_model_instance_segmentation(2)
 
-    #checkpoint = torch.load('./checkpoint/ped_epoch_9')
-    checkpoint = torch.load('./checkpoint/epoch_9')
+    checkpoint = torch.load('./checkpoint/inb_epoch_9')
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     #transform = get_transform(False)
