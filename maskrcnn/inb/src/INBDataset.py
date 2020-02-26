@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-class INBDataset(object):
+class INBOkDataset(object):
     def __init__(self, root, transforms):
         self.root = root
         self.transforms = transforms
@@ -50,7 +50,8 @@ class INBDataset(object):
         masks = torch.as_tensor(masks, dtype=torch.uint8)
 
         image_id = torch.tensor([idx])
-        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+        if num_objs > 0:
+            area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
         # suppose all instances are not crowd
         iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
 
@@ -59,7 +60,8 @@ class INBDataset(object):
         target["labels"] = labels
         target["masks"] = masks
         target["image_id"] = image_id
-        target["area"] = area
+        if num_objs > 0:
+            target["area"] = area
         target["iscrowd"] = iscrowd
 
         if self.transforms is not None:

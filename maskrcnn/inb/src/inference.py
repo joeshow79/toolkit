@@ -162,7 +162,7 @@ def inference(model, dataset, device, data_index=1, img_path=None):
 
 
 if __name__ == '__main__':
-    dataset = INBDataset('data', get_transform(train=False))
+    dataset = INBDataset('test_data', get_transform(train=False))
     indices = torch.randperm(len(dataset)).tolist()
     dataset_test = torch.utils.data.Subset(dataset, indices[-50:])
 
