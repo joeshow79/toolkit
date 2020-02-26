@@ -5,7 +5,7 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 import numpy as np
 from PIL import Image, ImageDraw
 import transforms as T
-from INBDataset import INBDataset
+from INBOkDataset import INBOkDataset
 import time
 
 DEBUG = False
@@ -162,9 +162,9 @@ def inference(model, dataset, device, data_index=1, img_path=None):
 
 
 if __name__ == '__main__':
-    dataset = INBDataset('test_data', get_transform(train=False))
+    dataset = INBOkDataset('benchmark', get_transform(train=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset_test = torch.utils.data.Subset(dataset, indices[-50:])
+    dataset_test = torch.utils.data.Subset(dataset, indices[-50:])  # FIXME
 
     model = get_model_instance_segmentation(2)
     checkpoint = torch.load('./checkpoint/inb_epoch_9')
