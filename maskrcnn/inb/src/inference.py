@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 import transforms as T
 from INBDataset import INBDataset
+import time
 
 DEBUG = False
 
@@ -42,7 +43,7 @@ def show_sample(img, target, show=True):
     return image
 
 
-def show_sample_and_pred(img, target, pred, output_file=None):
+def show_sample_and_pred(img, target, pred, masks, output_file=None):
     """
     Show a sample image
     :param img: Tensor of shape (3, H, W)
@@ -68,10 +69,23 @@ def show_sample_and_pred(img, target, pred, output_file=None):
     print_if_debug('bbox in pred:{}'.format(pred[0]['boxes']))
     for bbox in pred[0]['boxes']:
         print_if_debug('bbox:{}'.format(bbox))
-        draw.rectangle(bbox.numpy(), outline=(255, 255, 255))
+        draw.rectangle(bbox.detach().numpy(), outline=(255, 255, 255))
+
+    # Mask
+    # for row in range(img_arr.shape[0]):
+    #     for col in range(img_arr.shape[1]):
+    #         if masks[row, col] > 0:
+    #              draw.point((col, row))
 
     if output_file is not None:
-        image.save(output_file)
+        image.save(output_file + ".png")
+
+        for i in range(0, masks.shape[0]):  # go through all masks
+            mask = masks[i]
+            mask = mask.transpose(1, 2, 0).astype("uint8")
+            mask = mask[:, :, 0]
+            mask_img = Image.fromarray(mask)
+            mask_img.save(output_file + "_mask_" + str(i) + ".png")
 
     return image
 
@@ -104,65 +118,47 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
-def inference(dataset, data_index=1, img_path=None):
-    # device = torch.device("cuda")
-    device = torch.device("cpu")
-
+def inference(model, dataset, device, data_index=1, img_path=None):
     if data_index is not None:
         input_img, target = dataset[data_index]
-    # show_sample(input_img, target)
 
-    # print_if_debug("debug:{}".format(input_img))
+    cpu_device = torch.device("cpu")
 
-    batch_input_img = input_img.unsqueeze(0)
-    # debug_info = batch_input_img.numpy()
-    # print_if_debug("debug numpy shape:{}".format(debug_info.shape))
-
-    model = get_model_instance_segmentation(2)
-
-    checkpoint = torch.load('./checkpoint/inb_epoch_9')
-    model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
-    # transform = get_transform(False)
-    # transform = T.Compose([ T.ToTensor() ])
+    batch_input_img = input_img.unsqueeze(0)
+    batch_input_img = input_img.to(device)
+    batch_input_img = [batch_input_img]
 
-    # img = Image.open(img_path)
-    # img = img.unsqueeze(0).to(device)
-    # img = img.to(device)
+    # with torch.no_grad():
+    # model.to(device)
+    # pred = model(batch_input_img)
+    # print_if_debug("type:{}".format(type(pred[0])))
+    # print_if_debug(pred[0])
 
-    # img = utils.load_image(img_path)
-    # img = transform(img, None)
-    # print_if_debug('image:{}'.format(img))
-    # print_if_debug('image shape 1:{}'.format(img[0].numpy().shape))
+    torch.cuda.synchronize()
+    model_time = time.time()
+    outputs = model(batch_input_img)
 
-    with torch.no_grad():
-        # model.to(device)
-        pred = model(batch_input_img)
-        print_if_debug("type:{}".format(type(pred[0])))
-        print_if_debug(pred[0])
-    # output = pred[0]['masks'].numpy().squeeze()
-    mask = pred[0]['masks']
-    print_if_debug('mask shape 1:{}'.format(mask.shape))
-    print_if_debug('masks:{}'.format(mask))
-    # mask = mask.detach().clamp(0,255).numpy()
-    mask = mask.detach().numpy()
-    print_if_debug('mask shape 2:{}'.format(mask.shape))
+    outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
+    model_time = time.time() - model_time
 
-    mask = mask[0]
-    mask = mask.transpose(1, 2, 0).astype("uint8")
-    mask = mask[:, :, 0]
-    img = Image.fromarray(mask)
-    img.save('mask.png')
-    # np.savetxt('test.txt', img, fmt='%d')
-    np.savetxt('test.txt', img, fmt='%1.4e')
+    # Debug only begin
+    mask_0 = outputs[0]['masks']
+    print_if_debug('mask shape 1:{}'.format(mask_0.shape))
+    print_if_debug('mask_0:{}'.format(mask_0))
 
-    print_if_debug('masks:{}'.format(mask))
-    print_if_debug('scores:{}'.format(pred[0]['scores']))
-    print_if_debug('boxes:{}'.format(pred[0]['boxes']))
-    print_if_debug('labels:{}'.format(pred[0]['labels']))
+    mask_0 = mask_0 * 255
+    mask_0.clamp(0, 255) % 255
+    masks_np = mask_0.detach().numpy()
 
-    show_sample_and_pred(input_img, target, pred,
-                         'out/'+str(data_index)+'.png')
+    print_if_debug('masks:{}'.format(masks_np))
+    print_if_debug('scores:{}'.format(outputs[0]['scores']))
+    print_if_debug('boxes:{}'.format(outputs[0]['boxes']))
+    print_if_debug('labels:{}'.format(outputs[0]['labels']))
+    # Debug only end
+
+    show_sample_and_pred(input_img, target, outputs, masks_np,
+                         'out/'+str(data_index))
 
 
 if __name__ == '__main__':
@@ -170,5 +166,12 @@ if __name__ == '__main__':
     indices = torch.randperm(len(dataset)).tolist()
     dataset_test = torch.utils.data.Subset(dataset, indices[-50:])
 
-    for image_index in range(0, 1):
-        inference(dataset_test, image_index)
+    model = get_model_instance_segmentation(2)
+    checkpoint = torch.load('./checkpoint/inb_epoch_9')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    device = torch.device('cuda') if torch.cuda.is_available()\
+        else torch.device('cpu')
+    model.to(device)
+
+    for image_index in range(0, 50):
+        inference(model, dataset_test, device, image_index)
