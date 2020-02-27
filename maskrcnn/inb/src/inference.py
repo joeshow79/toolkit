@@ -69,7 +69,7 @@ def show_sample_and_pred(img, target, pred, masks, output_file=None):
     print_if_debug('bbox in pred:{}'.format(pred[0]['boxes']))
     for bbox in pred[0]['boxes']:
         print_if_debug('bbox:{}'.format(bbox))
-        draw.rectangle(bbox.detach().numpy(), outline=(255, 255, 255))
+        draw.rectangle(bbox.numpy(), outline=(255, 255, 255))
 
     # Mask
     # for row in range(img_arr.shape[0]):
@@ -129,36 +129,37 @@ def inference(model, dataset, device, data_index=1, img_path=None):
     batch_input_img = input_img.to(device)
     batch_input_img = [batch_input_img]
 
-    # with torch.no_grad():
     # model.to(device)
     # pred = model(batch_input_img)
     # print_if_debug("type:{}".format(type(pred[0])))
     # print_if_debug(pred[0])
 
-    torch.cuda.synchronize()
-    model_time = time.time()
-    outputs = model(batch_input_img)
+    with torch.no_grad():
+        torch.cuda.synchronize()
+        model_time = time.time()
+        outputs = model(batch_input_img)
 
-    outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
-    model_time = time.time() - model_time
+        outputs = [{k: v.to(cpu_device) for k, v in t.items()}
+                   for t in outputs]
+        model_time = time.time() - model_time
 
-    # Debug only begin
-    mask_0 = outputs[0]['masks']
-    print_if_debug('mask shape 1:{}'.format(mask_0.shape))
-    print_if_debug('mask_0:{}'.format(mask_0))
+        # Debug only begin
+        mask_0 = outputs[0]['masks']
+        print_if_debug('mask shape 1:{}'.format(mask_0.shape))
+        print_if_debug('mask_0:{}'.format(mask_0))
 
-    mask_0 = mask_0 * 255
-    mask_0.clamp(0, 255) % 255
-    masks_np = mask_0.detach().numpy()
+        mask_0 = mask_0 * 255
+        mask_0.clamp(0, 255) % 255
+        masks_np = mask_0.numpy()
 
-    print_if_debug('masks:{}'.format(masks_np))
-    print_if_debug('scores:{}'.format(outputs[0]['scores']))
-    print_if_debug('boxes:{}'.format(outputs[0]['boxes']))
-    print_if_debug('labels:{}'.format(outputs[0]['labels']))
-    # Debug only end
+        print_if_debug('masks:{}'.format(masks_np))
+        print_if_debug('scores:{}'.format(outputs[0]['scores']))
+        print_if_debug('boxes:{}'.format(outputs[0]['boxes']))
+        print_if_debug('labels:{}'.format(outputs[0]['labels']))
+        # Debug only end
 
-    show_sample_and_pred(input_img, target, outputs, masks_np,
-                         'out/'+str(data_index))
+        show_sample_and_pred(input_img, target, outputs, masks_np,
+                             'out/'+str(data_index))
 
 
 if __name__ == '__main__':
