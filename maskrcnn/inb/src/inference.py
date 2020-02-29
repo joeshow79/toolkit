@@ -124,7 +124,7 @@ def inference(model, dataset, device, data_index=1, img_path=None):
         # Debug only end
 
         show_sample_and_pred(input_img, target, outputs, masks_np,
-                             'out/'+str(data_index))
+                             'out/' + '{:0>3d}'.format(data_index))
 
 
 if __name__ == '__main__':
@@ -155,5 +155,5 @@ if __name__ == '__main__':
         else torch.device('cpu')
     model.to(device)
 
-    for image_index in range(0, 50):  # FIXME
+    for image_index in range(0, 100):  # FIXME
         inference(model, dataset_test, device, image_index)
