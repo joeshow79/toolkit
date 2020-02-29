@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-class INBOkDataset(object):
+class INBDataset(object):
     def __init__(self, root, transforms):
         self.root = root
         self.transforms = transforms

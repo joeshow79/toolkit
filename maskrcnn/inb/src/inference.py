@@ -1,12 +1,10 @@
-import torch
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-import numpy as np
-from PIL import Image, ImageDraw
-import transforms as T
-from INBOkDataset import INBOkDataset
 import time
+import numpy as np
+import torch
+from PIL import Image, ImageDraw
+import argparse
+from INBDataset import INBDataset
+import model as M
 
 DEBUG = False
 
@@ -90,34 +88,6 @@ def show_sample_and_pred(img, target, pred, masks, output_file=None):
     return image
 
 
-def get_model_instance_segmentation(num_classes):
-    # load an instance segmentation model pre-trained pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-
-    # get number of input features for the classifier
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # replace the pre-trained head with a new one
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-    # now get the number of input features for the mask classifier
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
-    # and replace the mask predictor with a new one
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
-                                                       hidden_layer,
-                                                       num_classes)
-
-    return model
-
-
-def get_transform(train):
-    transforms = []
-    transforms.append(T.ToTensor())
-    if train:
-        transforms.append(T.RandomHorizontalFlip(0.5))
-    return T.Compose(transforms)
-
-
 def inference(model, dataset, device, data_index=1, img_path=None):
     if data_index is not None:
         input_img, target = dataset[data_index]
@@ -128,11 +98,6 @@ def inference(model, dataset, device, data_index=1, img_path=None):
     batch_input_img = input_img.unsqueeze(0)
     batch_input_img = input_img.to(device)
     batch_input_img = [batch_input_img]
-
-    # model.to(device)
-    # pred = model(batch_input_img)
-    # print_if_debug("type:{}".format(type(pred[0])))
-    # print_if_debug(pred[0])
 
     with torch.no_grad():
         torch.cuda.synchronize()
@@ -163,16 +128,32 @@ def inference(model, dataset, device, data_index=1, img_path=None):
 
 
 if __name__ == '__main__':
-    dataset = INBOkDataset('benchmark', get_transform(train=False))
-    indices = torch.randperm(len(dataset)).tolist()
-    dataset_test = torch.utils.data.Subset(dataset, indices[-50:])  # FIXME
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--backbone", type=str,
+                        choices=['resnet', 'mn2'], default='mn2',
+                        help="backbone type")
+    parser.add_argument("-m", "--modelpath",
+                        default='./checkpoint/inb_mobilenetv2_epoch_9',
+                        help="model file path")
+    parser.add_argument("-d", "--datapath", default='./benchmark',
+                        help="data path")
+    args = parser.parse_args()
 
-    model = get_model_instance_segmentation(2)
-    checkpoint = torch.load('./checkpoint/inb_epoch_9')
-    model.load_state_dict(checkpoint['model_state_dict'])
+    dataset = INBDataset(args.datapath, M.get_transform(train=False))
+
+    dataset_test = dataset
+
+    num_classes = 2
+
+    model = M.get_model_instance_segmentation(args.backbone, num_classes)
+
+    checkpoint = torch.load(args.modelpath)
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint)
+
     device = torch.device('cuda') if torch.cuda.is_available()\
         else torch.device('cpu')
     model.to(device)
 
-    for image_index in range(0, 50):
+    for image_index in range(0, 50):  # FIXME
         inference(model, dataset_test, device, image_index)

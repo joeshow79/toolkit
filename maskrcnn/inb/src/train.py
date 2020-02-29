@@ -1,73 +1,13 @@
-import torch
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-from engine import train_one_epoch, evaluate
-import utils
 import os
-import transforms as T
+import utils
+import argparse
+import torch
+from engine import train_one_epoch, evaluate
 from INBDataset import INBDataset
+import model as M
 
 
-def get_model_instance_segmentation(num_classes):
-    # load an instance segmentation model pre-trained pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-
-    # get number of input features for the classifier
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # replace the pre-trained head with a new one
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-    # now get the number of input features for the mask classifier
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
-    # and replace the mask predictor with a new one
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
-                                                       hidden_layer,
-                                                       num_classes)
-
-    return model
-
-
-def get_transform(train):
-    transforms = []
-    transforms.append(T.ToTensor())
-    if train:
-        transforms.append(T.RandomHorizontalFlip(0.5))
-    return T.Compose(transforms)
-
-
-def eval(img_path):
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-    dataset = INBDataset('data', get_transform(train=True))
-    data_loader = torch.utils.data.DataLoader(
-     dataset, batch_size=2, shuffle=True, num_workers=4,
-     collate_fn=utils.collate_fn)
-    # For Training
-    images, targets = next(iter(data_loader))
-    images = list(image for image in images)
-    targets = [{k: v for k, v in t.items()} for t in targets]
-
-    model.eval()
-    # output = model(images,targets)   # Returns losses and detections
-    # For inference
-    x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
-    predictions = model(x)           # Returns predictions
-    print(predictions)
-    print(predictions[0]['masks'])
-
-
-def train():
-    # train on the GPU or on the CPU, if a GPU is not available
-    device = torch.device('cuda') if torch.cuda.is_available()\
-        else torch.device('cpu')
-
-    # our dataset has two classes only - background and person
-    num_classes = 2
-    # use our dataset and defined transformations
-    dataset = INBDataset('data', get_transform(train=True))
-    dataset_test = INBDataset('data', get_transform(train=False))
-
+def train(model, dataset, dataset_test, device, prefix):
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
@@ -81,9 +21,6 @@ def train():
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=2,
         collate_fn=utils.collate_fn)
-
-    # get the model using our helper function
-    model = get_model_instance_segmentation(num_classes)
 
     # move model to the right device
     model.to(device)
@@ -105,9 +42,12 @@ def train():
         train_one_epoch(model, optimizer, data_loader,
                         device, epoch, print_freq=10)
 
-        torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(), },
-                   os.path.join("checkpoint/", "inb_epoch_" + str(epoch)))
+        # torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
+        # 'optimizer_state_dict': optimizer.state_dict(), },
+        # os.path.join("checkpoint/", prefix + "_" + str(epoch)))
+
+        torch.save(model.state_dict(),
+                   os.path.join("checkpoint/", prefix + "_" + str(epoch)))
 
         # update the learning rate
         lr_scheduler.step()
@@ -118,4 +58,29 @@ def train():
 
 
 if __name__ == '__main__':
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--backbone", type=str,
+                        choices=['resnet', 'mn2'], default='mn2',
+                        help="backbone type")
+    parser.add_argument("-p", "--prefix",
+                        default='inb_mn2_epoch',
+                        help="model file prefix")
+    parser.add_argument("-d", "--datapath", default='./data',
+                        help="data path")
+    args = parser.parse_args()
+
+    # train on the GPU or on the CPU, if a GPU is not available
+    device = torch.device('cuda') if torch.cuda.is_available()\
+        else torch.device('cpu')
+
+    # use our dataset and defined transformations
+    dataset = INBDataset('data', M.get_transform(train=True))
+    dataset_test = INBDataset('data', M.get_transform(train=False))
+
+    # our dataset has two classes only -
+    num_classes = 2
+
+    # get the model using our helper function
+    model = M.get_model_instance_segmentation(args.backbone, num_classes)
+
+    train(model, dataset, dataset_test, device, args.prefix)
