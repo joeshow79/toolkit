@@ -5,6 +5,9 @@ from PIL import Image, ImageDraw
 import argparse
 from INBDataset import INBDataset
 import model as M
+from skimage import measure
+import matplotlib.pyplot as plt
+
 
 DEBUG = False
 
@@ -41,7 +44,8 @@ def show_sample(img, target, show=True):
     return image
 
 
-def show_sample_and_pred(img, target, pred, masks, output_file=None):
+def show_sample_and_pred(img, target, pred, masks,
+                         output_file=None, filtered_boxes_id=None):
     """
     Show a sample image
     :param img: Tensor of shape (3, H, W)
@@ -55,35 +59,67 @@ def show_sample_and_pred(img, target, pred, masks, output_file=None):
     img_arr = img_arr.astype(np.uint8)
 
     image = Image.fromarray(img_arr)
+
     bboxes = target['boxes'].numpy()
     bboxes = np.ceil(bboxes)
 
+    fig, ax = plt.subplots()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.imshow(img_arr, cmap=plt.cm.gray)
+
+    # GT BBox
     draw = ImageDraw.Draw(image)
     for bbox_id in range(bboxes.shape[0]):
         bbox = list(bboxes[bbox_id, :])
         print_if_debug('bbox:{}'.format(bbox))
         draw.rectangle(bbox, outline=(255, 0, 255))
+        rect = plt.Rectangle((bbox[0], bbox[1]),
+                             bbox[2]-bbox[0], bbox[3]-bbox[1],
+                             fill=False, edgecolor='red', linewidth=1)
+        ax.add_patch(rect)
 
+    # Predicted BBox
     print_if_debug('bbox in pred:{}'.format(pred[0]['boxes']))
-    for bbox in pred[0]['boxes']:
-        print_if_debug('bbox:{}'.format(bbox))
-        draw.rectangle(bbox.numpy(), outline=(255, 255, 255))
+    index = 0
 
-    # Mask
-    # for row in range(img_arr.shape[0]):
-    #     for col in range(img_arr.shape[1]):
-    #         if masks[row, col] > 0:
-    #              draw.point((col, row))
+    result = pred[0]
+    for bbox in result['boxes']:
+        if (filtered_boxes_id is not None) and (index in filtered_boxes_id):
+            continue
+        else:
+            print_if_debug('bbox:{}'.format(bbox))
+            draw.rectangle(bbox.numpy(), outline=(255, 255, 255))
+            rect = plt.Rectangle((bbox[0], bbox[1]),
+                                 bbox[2]-bbox[0], bbox[3]-bbox[1],
+                                 fill=False, edgecolor='white', linewidth=1)
+            ax.add_patch(rect)
+            ax.text(bbox[0], bbox[1], 'class:{} conf:{:.2f}'.format(
+                result['labels'][index].numpy(),
+                result['scores'][index].numpy()),
+                bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 0})
+
+        index = index + 1
 
     if output_file is not None:
-        image.save(output_file + ".png")
-
-        for i in range(0, masks.shape[0]):  # go through all masks
+        for i in range(0, len(masks)):  # go through all masks
             mask = masks[i]
+            contours = measure.find_contours(mask[0], 0.8)
+
+            # ROI contour
+            for n, contour in enumerate(contours):
+                ax.plot(contour[:, 1], contour[:, 0],
+                        linewidth=1, color='orange')
+
             mask = mask.transpose(1, 2, 0).astype("uint8")
             mask = mask[:, :, 0]
             mask_img = Image.fromarray(mask)
             mask_img.save(output_file + "_mask_" + str(i) + ".png")
+
+        # image.save(output_file + ".jpg")
+        plt.savefig(output_file + ".png")
+
+    plt.close()
 
     return image
 
@@ -123,8 +159,30 @@ def inference(model, dataset, device, data_index=1, img_path=None):
         print_if_debug('labels:{}'.format(outputs[0]['labels']))
         # Debug only end
 
-        show_sample_and_pred(input_img, target, outputs, masks_np,
-                             'out/' + '{:0>3d}'.format(data_index))
+        # Mask process 1: Filter out mask of small area or low confidence
+        filtered_masks = []
+        filtered_boxes_id = []
+        index = 0
+        for mask_np in masks_np:
+            # TODO: Threshold the mask
+            mask_np = (mask_np > 128) * mask_np
+
+            sub_nz = np.nonzero(mask_np)
+            if len(mask_np[sub_nz]) >= 100:  # FIXME  skip < 10x10 patch
+                filtered_masks.append(mask_np)
+            else:
+                filtered_boxes_id.append(index)
+
+            index += 1
+
+        # Mask process 2: Merge
+        if len(filtered_masks) > 0:
+            filtered_masks = np.mean(filtered_masks, 0).astype(int)
+            filtered_masks = [filtered_masks]
+
+        show_sample_and_pred(input_img, target, outputs, filtered_masks,
+                             'out/' + '{:0>3d}'.format(data_index),
+                             filtered_boxes_id)
 
 
 if __name__ == '__main__':
