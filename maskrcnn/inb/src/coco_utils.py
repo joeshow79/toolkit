@@ -160,10 +160,16 @@ def convert_to_coco_api(ds):
         img_dict['width'] = img.shape[-1]
         dataset['images'].append(img_dict)
         bboxes = targets["boxes"]
-        bboxes[:, 2:] -= bboxes[:, :2]
-        bboxes = bboxes.tolist()
+        # jasonj: for no BBox cases
+        print('jasonj bboxes:{}'.format(bboxes))
+        if len(bboxes) > 0:
+            bboxes[:, 2:] -= bboxes[:, :2]
+            bboxes = bboxes.tolist()
+            areas = targets['area'].tolist()
+        else:
+            bboxes = []
+            areas = []
         labels = targets['labels'].tolist()
-        areas = targets['area'].tolist()
         iscrowd = targets['iscrowd'].tolist()
         if 'masks' in targets:
             masks = targets['masks']

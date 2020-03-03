@@ -188,10 +188,10 @@ def inference(model, dataset, device, data_index=1, img_path=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--backbone", type=str,
-                        choices=['resnet', 'mn2'], default='mn2',
+                        choices=['resnet', 'mn2'], default='resnet',
                         help="backbone type")
     parser.add_argument("-m", "--modelpath",
-                        default='./checkpoint/inb_mobilenetv2_epoch_9',
+                        default='./checkpoint/inb_resnet_9',
                         help="model file path")
     parser.add_argument("-d", "--datapath", default='./benchmark',
                         help="data path")

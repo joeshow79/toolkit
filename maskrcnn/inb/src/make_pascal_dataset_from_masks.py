@@ -2,9 +2,9 @@ from PIL import Image
 import numpy as np
 import os
 
-IMG_PATH = "./data/PNGImages"
-MASK_PATH = "./data/Masks"
-ANNOTATION_PATH = "./data/Annotation"
+IMG_PATH = "./benchmark/PNGImages"
+MASK_PATH = "./benchmark/Masks"
+ANNOTATION_PATH = "./benchmark/Annotation"
 
 def make_annotation(mask_path):
     #im = Image.open('mask2.png')
@@ -111,7 +111,7 @@ def make_annotation(mask_path):
 
     with open(annot_filepath, 'wt') as f:
         print("# Compatible with PASCAL Annotation Version 1.00", file=f)
-        print("Image filename : \"data/PNGImages/{}".format(img_filename), file=f)
+        print("Image filename : \"benchmark/PNGImages/{}".format(img_filename), file=f)
         print("Image size (X x Y x C) : 672 x 512 x 1", file=f)
         print("Database : \"The JiaSen-InstantNoodleBox Database\"", file=f)
 
@@ -127,12 +127,12 @@ def make_annotation(mask_path):
         index = 0
         for rect in rects:
             print("# Details for defect {} (\"PackageDefect\")".format(index+1), file=f)
-            print("Original label for object {} \"PackageDefect\" : \"data\"".format(index+1), file=f)
+            print("Original label for object {} \"PackageDefect\" : \"benchmark\"".format(index+1), file=f)
             print("Bounding box for object {} \"PackageDefect\" (Xmin, Ymin) - (Xmax, Ymax) : ({}, {}) - ({}, {})".format(index, \
                     rects[index][0][0], rects[index][0][1], \
                     rects[index][0][0] + rects[index][1], \
                     rects[index][0][1] + rects[index][2]), file=f)
-            print("Pixel mask for object {} \"PackageDefect\" : \"data/Masks/{}\"".format(index+1, mask_filename), file=f)
+            print("Pixel mask for object {} \"PackageDefect\" : \"benchmark/Masks/{}\"".format(index+1, mask_filename), file=f)
 
             index = index + 1
 
@@ -145,4 +145,4 @@ if __name__ == '__main__':
             print("process {}".format(os.path.join(root, file)))
             make_annotation(os.path.join(root, file))
 
-    #make_annotation("data/PedMasks/1582254522665434.mask.png")
+    #make_annotation("benchmark/PedMasks/1582254522665434.mask.png")
