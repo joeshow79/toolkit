@@ -161,7 +161,7 @@ def convert_to_coco_api(ds):
         dataset['images'].append(img_dict)
         bboxes = targets["boxes"]
         # jasonj: for no BBox cases
-        print('jasonj bboxes:{}'.format(bboxes))
+        # print('jasonj bboxes:{}'.format(bboxes))
         if len(bboxes) > 0:
             bboxes[:, 2:] -= bboxes[:, :2]
             bboxes = bboxes.tolist()

@@ -7,7 +7,9 @@ import time
 import torch
 import torch._six
 
-from pycocotools.cocoeval import COCOeval
+# from pycocotools.cocoeval import COCOeval
+# Change the IoU threshold to 0.5 for recall stat
+from pycocotools.cocoeval_js import COCOeval
 from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 
